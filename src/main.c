@@ -30,251 +30,210 @@ SOFTWARE.
 /* Includes */
 #include <stddef.h>
 #include "stm32f10x.h"
+#include "stm32f10x_rcc.h"
+#include <stdio.h>
 
-#ifdef USE_STM3210B_EVAL
- #include "stm3210b_eval.h"
- #include "stm3210b_eval_lcd.h"
- #define USE_BOARD
- #define USE_LED
-#elif defined USE_STM3210E_EVAL
- #include "stm3210e_eval.h"
- #include "stm3210e_eval_lcd.h"
- #define USE_BOARD
- #define USE_LED
-#elif defined USE_STM3210C_EVAL
- #include "stm3210c_eval.h"
- #include "stm3210c_eval_lcd.h"
- #include "stm3210c_eval_i2c_ee.h"
- #define USE_BOARD
- #define USE_LED
- #define USE_SEE
-#elif defined USE_STM32100B_EVAL
- #include "stm32100b_eval.h"
- #include "stm32100b_eval_lcd.h"
- #define USE_BOARD
- #define USE_LED
-#elif defined USE_STM32100E_EVAL
- #include "stm32100e_eval.h"
- #include "stm32100e_eval_lcd.h"
- #include "stm32100e_eval_i2c_ee.h"
- #define USE_BOARD
- #define USE_LED
- #define USE_SEE
-#elif defined USE_STM32_DISCOVERY
- #include "STM32vldiscovery.h"
-#elif defined USE_IAR_STM32F103ZE
- #include "board.h"
- #define USE_LED
-#elif defined USE_KEIL_MCBSTM32
- #include "board.h"
- #define USE_LED
-#endif
+void gpio_toggle(void);
+void GPIOA_Init(void);
+void delay(uint32_t ms);
+void USART1_Init(void);
+void OutString(char *s);
+void setSystemFreq(void);
 
+RCC_ClocksTypeDef RCC_Clocks;
 
-/* Private typedef */
-/* Private define  */
-#ifdef USE_STM3210B_EVAL
-  #define MESSAGE1   "STM32 Medium Density"
-  #define MESSAGE2   " Device running on  "
-  #define MESSAGE3   "   STM3210B-EVAL    "
-  #define MESSAGE4   "                    "
-#elif defined USE_STM3210E_EVAL
-  #define MESSAGE1   " STM32 High Density "
-  #define MESSAGE2   " Device running on  "
-  #define MESSAGE3   "   STM3210E-EVAL    "
-  #define MESSAGE4   "                    "
-#elif defined USE_STM3210C_EVAL
-  #define MESSAGE1   " STM32 Connectivity "
-  #define MESSAGE2   " Line Device running"
-  #define MESSAGE3   " on STM3210C-EVAL   "
-  #define MESSAGE4   "                    "
-#elif defined USE_STM32100B_EVAL
-  #define MESSAGE1   "STM32 Medium Density"
-  #define MESSAGE2   " Value Line Device  "
-  #define MESSAGE3   "    running on      "
-  #define MESSAGE4   "   STM32100B-EVAL   "
-#elif defined USE_STM32100E_EVAL
-  #define MESSAGE1   " STM32 High Density "
-  #define MESSAGE2   " Value Line Device  "
-  #define MESSAGE3   "    running on      "
-  #define MESSAGE4   "   STM32100E-EVAL   "
-#endif
-  #define MESSAGE5   " program built with "
-  #define MESSAGE6   " Atollic TrueSTUDIO "
-
-
-/* Private macro */
-/* Private variables */
- USART_InitTypeDef USART_InitStructure;
-
-/* Private function prototypes */
-/* Private functions */
-
-/**
-**===========================================================================
-**
-**  Abstract: main program
-**
-**===========================================================================
-*/
 int main(void)
 {
-  int i = 0;
+	char str[100] = {0};
 
-  /**
-  *  IMPORTANT NOTE!
-  *  The symbol VECT_TAB_SRAM needs to be defined when building the project
-  *  if code has been located to RAM and interrupts are used. 
-  *  Otherwise the interrupt table located in flash will be used.
-  *  See also the <system_*.c> file and how the SystemInit() function updates 
-  *  SCB->VTOR register.  
-  *  E.g.  SCB->VTOR = 0x20000000;  
-  */
+	//setSystemFreq();
 
-#ifdef USE_LED
-  /* Initialize LEDs */
-  STM_EVAL_LEDInit(LED1);
-  STM_EVAL_LEDInit(LED2);
-  STM_EVAL_LEDInit(LED3);
-  STM_EVAL_LEDInit(LED4);
+	//SystemCoreClockUpdate();
 
-  /* Turn on LEDs */
-  STM_EVAL_LEDOn(LED1);
-  STM_EVAL_LEDOn(LED2);
-  STM_EVAL_LEDOn(LED3);
-  STM_EVAL_LEDOn(LED4);
+	RCC_GetClocksFreq(&RCC_Clocks);
 
-#elif defined USE_STM32_DISCOVERY
-  STM32vldiscovery_LEDInit(LED3);
-  STM32vldiscovery_LEDInit(LED4);
-  STM32vldiscovery_PBInit(BUTTON_USER, BUTTON_MODE_GPIO);
-  STM32vldiscovery_LEDOff(LED3);
-  STM32vldiscovery_LEDOff(LED4);
-#endif
+	GPIOA_Init();
 
-#ifdef USE_BOARD
-  /* Initialize the LCD */
-#ifdef USE_STM3210B_EVAL
-  STM3210B_LCD_Init();
-#elif defined USE_STM3210E_EVAL
-  STM3210E_LCD_Init();
-#elif defined USE_STM3210C_EVAL
-  STM3210C_LCD_Init();
-#elif defined USE_STM32100B_EVAL
-  STM32100B_LCD_Init();
-#endif
+	USART1_Init();
 
-  /* Display message on STM3210X-EVAL LCD */
-  /* Clear the LCD */
-  LCD_Clear(White);
+	OutString("Welcome to  F103C8 test\r\n");
+	sprintf(str, "Running at %d MHz\n", (int)(RCC_Clocks.SYSCLK_Frequency / 1000000));
+	OutString(str);
 
-  /* Set the LCD Back Color */
-  LCD_SetBackColor(Blue);
-  /* Set the LCD Text Color */
-  LCD_SetTextColor(White);
-  LCD_DisplayStringLine(Line0, (uint8_t *)MESSAGE1);
-  LCD_DisplayStringLine(Line1, (uint8_t *)MESSAGE2);
-  LCD_DisplayStringLine(Line2, (uint8_t *)MESSAGE3);
-  LCD_DisplayStringLine(Line3, (uint8_t *)MESSAGE4);
-  LCD_DisplayStringLine(Line4, (uint8_t *)MESSAGE5);
-  LCD_DisplayStringLine(Line5, (uint8_t *)MESSAGE6);
+	/* Infinite loop */
+	while (1);
+}
 
-  /* USARTx configured as follow:
-        - BaudRate = 115200 baud
-        - Word Length = 8 Bits
-        - One Stop Bit
-        - No parity
-        - Hardware flow control disabled (RTS and CTS signals)
-        - Receive and transmit enabled
-  */
-  USART_InitStructure.USART_BaudRate = 115200;
-  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-  USART_InitStructure.USART_StopBits = USART_StopBits_1;
-  USART_InitStructure.USART_Parity = USART_Parity_No;
-  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-  USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-
-  STM_EVAL_COMInit(COM1, &USART_InitStructure);
-#endif
-
-  /* TODO - Add your application code here */
-
-  /* Infinite loop */
-  while (1)
+void OutString(char *s)
+{
+  while(*s)
   {
-	i++;
-#ifdef USE_LED
-	STM_EVAL_LEDToggle(LED1);
+    while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET); // Wait for Empty
 
-#elif defined USE_STM32_DISCOVERY
-    if(0 == STM32vldiscovery_PBGetState(BUTTON_USER))
+    USART_SendData(USART1, *s++); // Send Char
+    while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET); //wait for data to be sent
+  }
+}
+
+
+void USART1_IRQHandler(void)
+{
+    /* RXNE handler */
+    if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)
     {
-      /* Toggle LED3 */
-      STM32vldiscovery_LEDToggle(LED3);
-      /* Turn Off LED4 */
-      STM32vldiscovery_LEDOff(LED4);
+        /* If received 't', toggle LED and transmit 'T' */
+        if((char)USART_ReceiveData(USART1) == 't')
+        {
+            gpio_toggle();
+            USART_SendData(USART1, 'T');
+            /* Wait until Tx data register is empty, not really
+             * required for this example but put in here anyway.
+             */
+
+            while(USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET)
+            {
+            }
+        }
     }
+
+    /* ------------------------------------------------------------ */
+    /* Other USART1 interrupts handler can go here ...             */
+}
+
+void USART1_Init(void)
+{
+	//RCC_HSEConfig();
+
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1 | RCC_APB2Periph_GPIOA |RCC_APB2Periph_AFIO, ENABLE);
+	delay(2); //seconds delay
+
+	USART_InitTypeDef USART_InitStructure;
+	GPIO_InitTypeDef pin_settings;
+
+	USART_InitStructure.USART_BaudRate = 115200;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;
+	USART_InitStructure.USART_Parity = USART_Parity_No;
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+
+	// Set PTA10 as RX pin (AF)
+	pin_settings.GPIO_Mode = GPIO_Mode_IN_FLOATING;		//Input Floating Mode
+	pin_settings.GPIO_Pin	= GPIO_Pin_10;			//PTA10 as USART1_RX input
+	pin_settings.GPIO_Speed = GPIO_Speed_10MHz;
+	GPIO_Init(GPIOA, &pin_settings);
+
+	// Set PA9 as TX PIN (AF)
+	pin_settings.GPIO_Mode = GPIO_Mode_AF_PP; //GPIO_Mode_AF_PP; GPIO_Mode_AF_OD;	//Output Push Pull Mode -> drives another device
+	pin_settings.GPIO_Pin	= GPIO_Pin_9;			//PTA9 as USART1_TX output
+	pin_settings.GPIO_Speed = GPIO_Speed_10MHz;
+	GPIO_Init(GPIOA, &pin_settings);
+
+	//enable SART1 and configure it
+	USART_Cmd(USART1, ENABLE);
+	delay(2); //seconds delay
+	USART_Init(USART1, &USART_InitStructure);
+	delay(2); //seconds delay
+	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+
+	NVIC_EnableIRQ(USART1_IRQn);
+	NVIC_ClearPendingIRQ(USART1_IRQn);
+}
+
+void GPIOA_Init(void)
+{
+    /* Bit configuration structure for GPIOA PIN8 */
+    GPIO_InitTypeDef gpioa_init_struct = { GPIO_Pin_8, GPIO_Speed_10MHz,
+                                           GPIO_Mode_Out_PP };
+
+    /* Enable PORT A clock */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+    /* Initialize GPIOA: 50MHz, PIN8, Push-pull Output */
+    GPIO_Init(GPIOA, &gpioa_init_struct);
+
+    /* Turn off GPIO at the beginning */
+    GPIO_SetBits(GPIOA, GPIO_Pin_8);
+}
+
+void gpio_toggle(void)
+{
+    /* Read GPIO output (GPIOA PIN8) status */
+    uint8_t led_bit = GPIO_ReadOutputDataBit(GPIOA, GPIO_Pin_8);
+
+    /* If GPIO output set, clear it */
+    if(led_bit == (uint8_t)Bit_SET)
+    {
+        GPIO_ResetBits(GPIOA, GPIO_Pin_8);
+    }
+    /* If GPIO output clear, set it */
     else
     {
-      /* Toggle LED4 */
-        STM32vldiscovery_LEDToggle(LED4);
-      /* Turn Off LED3 */
-      STM32vldiscovery_LEDOff(LED3);
+        GPIO_SetBits(GPIOA, GPIO_Pin_8);
     }
-#endif
-  }
 }
 
-#ifdef  USE_FULL_ASSERT
+void delay(uint32_t ms){
+	RCC_GetClocksFreq(&RCC_Clocks);
 
-/**
-  * @brief  Reports the name of the source file and the source line number
-  *   where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t* file, uint32_t line)
+	uint32_t freq = (uint32_t)RCC_Clocks.SYSCLK_Frequency/10;// 8Mhz, or 72Mhz
+
+	uint32_t j=0, k=0;
+	while(k<=ms)
+	{
+		j = freq;
+		while(j>=0)
+		{
+			asm("NOP");
+			j++;
+		}
+		k++;
+	}
+}
+
+void setSystemFreq()
 {
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+	RCC->CIR = 0x009F0000;
+	// Turn HSE ON
+	RCC->CR |= RCC_CR_HSEON;
+	// Wait Until HSE Is Ready
+	while (!(RCC->CR & RCC_CR_HSERDY))
+		;
 
-  /* Infinite loop */
-  while (1)
-  {
-  }
+    //set HSE as system clock
+    RCC->CFGR = (RCC->CFGR & ~(RCC_CFGR_SW)) | RCC_CFGR_SW_HSE;
+
+    //AHB prescaler
+    RCC->CFGR &= ~(RCC_CFGR_HPRE); //remove old prescaler
+    RCC->CFGR |= RCC_CFGR_HPRE_DIV1; //set AHB prescaler = 1.
+    //set ADC prescaler = 8
+    RCC->CFGR &= ~(RCC_CFGR_ADCPRE);
+    RCC->CFGR |= RCC_CFGR_ADCPRE_DIV8;
+    //set APB1 prescaler
+    RCC->CFGR &= ~(RCC_CFGR_PPRE1);
+    RCC->CFGR |= RCC_CFGR_PPRE1_DIV2;
+    //set APB2 prescaler
+    RCC->CFGR &= ~(RCC_CFGR_PPRE2);
+    RCC->CFGR |= RCC_CFGR_PPRE2_DIV1;
+
+    //set flash wait states to 2 wait states
+    FLASH->ACR &= ~(FLASH_ACR_LATENCY);
+    FLASH->ACR |= FLASH_ACR_LATENCY_2;
+
+    //Set PLL Multiplier
+    //RCC->CFGR |= 0b1100 << 18;
+    //at HSE=8MHz, 8*9 = 72MHz.
+    RCC->CFGR &= ~(RCC_CFGR_PLLMULL);
+    RCC->CFGR |= RCC_CFGR_PLLMULL9;
+
+    // //Set HSE as PLL Source. bit set -> HSE, bit unser -> HSI
+    RCC->CFGR |= RCC_CFGR_PLLSRC;
+
+    // Set HSE Prescaler On PLL Entry
+    RCC->CFGR &= ~RCC_CFGR_PLLXTPRE;
+    RCC->CFGR |= RCC_CFGR_PLLXTPRE_HSE; //no HSE prescaler before PLL entry
+
+    RCC->CFGR = (RCC->CFGR & ~(RCC_CFGR_SW)) | RCC_CFGR_SW_PLL;
+
+    // Clear All Interrupts
+    RCC->CIR = 0x009F0000;
 }
-#endif
-
-/*
- * Minimal __assert_func used by the assert() macro
- * */
-void __assert_func(const char *file, int line, const char *func, const char *failedexpr)
-{
-  while(1)
-  {}
-}
-
-/*
- * Minimal __assert() uses __assert__func()
- * */
-void __assert(const char *file, int line, const char *failedexpr)
-{
-   __assert_func (file, line, NULL, failedexpr);
-}
-
-#ifdef USE_SEE
-#ifndef USE_DEFAULT_TIMEOUT_CALLBACK
-/**
-  * @brief  Basic management of the timeout situation.
-  * @param  None.
-  * @retval sEE_FAIL.
-  */
-uint32_t sEE_TIMEOUT_UserCallback(void)
-{
-  /* Return with error code */
-  return sEE_FAIL;
-}
-#endif
-#endif /* USE_SEE */
-
